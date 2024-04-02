@@ -10,9 +10,9 @@ const PORT = 5000;
 
 const mysql = require('mysql2');
 const db = mysql.createPool({
-    host: 'localhost',
+    host: '127.0.0.1',
     user: 'root',
-    password: '1234',
+    password: 'NPalm1@#',
     database: 'university_events'
   });
 
