@@ -1,0 +1,94 @@
+CREATE DATABASE IF NOT EXISTS university_events;
+USE university_events;
+
+CREATE TABLE University (
+    UniversityID INT PRIMARY KEY AUTO_INCREMENT,
+    Name VARCHAR(255) NOT NULL,
+    Location VARCHAR(255) NOT NULL,
+    Description TEXT,
+    NumberOfStudents INT, -- Number of students
+    EmailDomain VARCHAR(255) -- Email domain for the university
+);
+
+CREATE TABLE User (
+    UserID INT PRIMARY KEY AUTO_INCREMENT,
+    Username VARCHAR(255) NOT NULL,
+    Password VARCHAR(255) NOT NULL,
+    UserType ENUM('super_admin', 'admin', 'student') NOT NULL,
+    Email VARCHAR(255) NOT NULL
+    -- Removed RSOID reference to allow multiple RSO affiliations via a new table
+);
+
+CREATE TABLE RSO (
+    RSOID INT PRIMARY KEY AUTO_INCREMENT,
+    UniversityID INT,
+    Name VARCHAR(255) NOT NULL,
+    FOREIGN KEY (UniversityID) REFERENCES University(UniversityID)
+);
+
+
+CREATE TABLE EventCategory (
+    EventCategoryID INT PRIMARY KEY AUTO_INCREMENT,
+    CategoryName VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE Location (
+    LocationID INT PRIMARY KEY AUTO_INCREMENT,
+    Name VARCHAR(255) NOT NULL,
+    Latitude DECIMAL(9,6),
+    Longitude DECIMAL(9,6),
+    AdditionalDetails TEXT
+);
+
+CREATE TABLE Event (
+    EventID INT PRIMARY KEY AUTO_INCREMENT,
+    Name VARCHAR(255) NOT NULL,
+    Description TEXT,
+    Time DATETIME,
+    Date DATE,
+    LocationID INT,
+    ContactPhone VARCHAR(20),
+    ContactEmail VARCHAR(255),
+    EventCategoryID INT,
+    RSOID INT, -- This is optional to support events not linked to an RSO
+    Visibility ENUM('public', 'private', 'RSO') NOT NULL,
+    IsApproved BOOLEAN DEFAULT FALSE, -- Added for event approval feature
+    FOREIGN KEY (LocationID) REFERENCES Location(LocationID),
+    FOREIGN KEY (EventCategoryID) REFERENCES EventCategory(EventCategoryID),
+    FOREIGN KEY (RSOID) REFERENCES RSO(RSOID)
+);
+
+CREATE TABLE Comment (
+    CommentID INT PRIMARY KEY AUTO_INCREMENT,
+    EventID INT,
+    UserID INT,
+    CommentText TEXT,
+    Rating INT CHECK (Rating BETWEEN 1 AND 5),
+    Timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (EventID) REFERENCES Event(EventID),
+    FOREIGN KEY (UserID) REFERENCES User(UserID)
+);
+
+-- New Table for User-RSO Affiliations
+CREATE TABLE UserRSOAffiliation (
+    UserRSOAffiliationID INT PRIMARY KEY AUTO_INCREMENT,
+    UserID INT NOT NULL,
+    RSOID INT NOT NULL,
+    IsAdmin BOOLEAN NOT NULL, -- TRUE if the user is an admin of the RSO
+    FOREIGN KEY (UserID) REFERENCES User(UserID),
+    FOREIGN KEY (RSOID) REFERENCES RSO(RSOID)
+);
+
+CREATE TABLE RSORequests (
+    RequestID INT PRIMARY KEY AUTO_INCREMENT,
+    UniversityID INT,
+    Name VARCHAR(255) NOT NULL,
+    Description TEXT,
+    RequestedBy INT, -- Admin ID
+    Status ENUM('pending', 'approved', 'denied') DEFAULT 'pending',
+    FOREIGN KEY (UniversityID) REFERENCES University(UniversityID),
+    FOREIGN KEY (RequestedBy) REFERENCES User(UserID)
+);
+
+
+
