@@ -1,16 +1,18 @@
 const express = require('express');
+const cors = require('cors');
 
 const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
 
 
 const app = express();
+app.use(cors());
 require('dotenv').config();
-const PORT = 5000;
+const PORT = 5010;
 
 const mysql = require('mysql2');
 const db = mysql.createPool({
-    host: '127.0.0.1',
+    host: 'localhost',
     user: 'root',
     password: 'NPalm1@#',
     database: 'university_events'
