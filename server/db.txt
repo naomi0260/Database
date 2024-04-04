@@ -12,11 +12,12 @@ CREATE TABLE University (
 
 CREATE TABLE User (
     UserID INT PRIMARY KEY AUTO_INCREMENT,
-    Username VARCHAR(255) NOT NULL,
+    Email VARCHAR(255) NOT NULL,
     Password VARCHAR(255) NOT NULL,
-    UserType ENUM('super_admin', 'admin', 'student') NOT NULL,
-    Email VARCHAR(255) NOT NULL
-    -- Removed RSOID reference to allow multiple RSO affiliations via a new table
+    UserType ENUM('super_admin', 'admin', 'student'), -- Made optional
+    UniversityID INT, -- Added to link User to a specific University
+    UNIQUE (Email), -- Ensure email uniqueness
+    FOREIGN KEY (UniversityID) REFERENCES University(UniversityID) -- Foreign key constraint
 );
 
 CREATE TABLE RSO (
@@ -51,12 +52,21 @@ CREATE TABLE Event (
     ContactEmail VARCHAR(255),
     EventCategoryID INT,
     RSOID INT, -- This is optional to support events not linked to an RSO
-    Visibility ENUM('public', 'private', 'RSO') NOT NULL,
-    IsApproved BOOLEAN DEFAULT FALSE, -- Added for event approval feature
+    UniversityID INT,
+    IsPublic BOOLEAN DEFAULT FALSE, -- Event is public
+    IsApproved BOOLEAN DEFAULT FALSE, -- take this off
+    publicRequest BOOLEAN DEFAULT FALSE, -- take this off
+    PublicStatus ENUM('notsent', 'pending', 'approved', 'denied') DEFAULT 'notsent',
+    IsVisibleToUniversity BOOLEAN DEFAULT FALSE, -- Event is visible to the university
+    IsVisibleToRSO BOOLEAN DEFAULT FALSE, -- Event is visible to the RSO
+    MadeBy INT, -- UserID of the event creator
     FOREIGN KEY (LocationID) REFERENCES Location(LocationID),
     FOREIGN KEY (EventCategoryID) REFERENCES EventCategory(EventCategoryID),
-    FOREIGN KEY (RSOID) REFERENCES RSO(RSOID)
+    FOREIGN KEY (RSOID) REFERENCES RSO(RSOID),
+    FOREIGN KEY (UniversityID) REFERENCES University(UniversityID),
+    FOREIGN KEY (MadeBy) REFERENCES User(UserID) -- New foreign key constraint for MadeBy
 );
+
 
 CREATE TABLE Comment (
     CommentID INT PRIMARY KEY AUTO_INCREMENT,
@@ -84,6 +94,7 @@ CREATE TABLE RSORequests (
     UniversityID INT,
     Name VARCHAR(255) NOT NULL,
     Description TEXT,
+    ListOfMembers TEXT,
     RequestedBy INT, -- Admin ID
     Status ENUM('pending', 'approved', 'denied') DEFAULT 'pending',
     FOREIGN KEY (UniversityID) REFERENCES University(UniversityID),

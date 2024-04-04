@@ -1,6 +1,5 @@
-//CRUD Events
-//CRUD RSO 
-//CRUD Uni 
-//Accept Req for Events
-//Accept Req for RSO 
+//CRU Uni 
+//Accept/deny/list Req for public Events
+//Accept/deny/list Req for RSO 
+//list users
 

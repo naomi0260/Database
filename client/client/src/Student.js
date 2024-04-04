@@ -1,4 +1,11 @@
-// StudentPage.js (React component for the student page)
+//list events (public, rso ,private)
+//list of rso 
+//join rso 
+//leave rso 
+//comment and rate event 
+//req to make rso 
+//req to make public event as a admin of a rso 
+//admin - CRUD events for rso , also can make private events to uni, U RSO 
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios'; // You can use axios for making API requests

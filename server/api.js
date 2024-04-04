@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 
 const bodyParser = require('body-parser');
-const bcrypt = require('bcrypt');
+
 
 
 const app = express();
@@ -38,20 +38,20 @@ db.getConnection((err, connection) => {
 
 app.use(bodyParser.json());
 
-
+//student 
 app.post('/api/users/register', async (req, res) => {
-    const { username, password, userType, email } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 8);
+    const { email, password, universityId } = req.body; // Include universityId in the request
 
     const db = await getDbConnection();
     try {
-        
-        await db.execute('INSERT INTO User (Username, Password, UserType, Email) VALUES (?, ?, ?, ?)', [username, hashedPassword, userType, email]);
-        
+        await db.execute('INSERT INTO User (Email, Password, UniversityID) VALUES (?, ?, ?)', [email, password, universityId]);
         
         const [[{UserID}]] = await db.execute('SELECT LAST_INSERT_ID() as UserID');
  
-        res.status(201).send({ message: 'User registered', UserID });
+        
+        const [user] = await db.execute('SELECT UniversityID FROM User WHERE UserID = ?', [UserID]);
+
+        res.status(201).send({ message: 'User registered', UserID, UniversityID: user[0].UniversityID });
     } catch (error) {
         res.status(500).send({ message: 'Error registering', error: error.message });
     } finally {
@@ -59,38 +59,20 @@ app.post('/api/users/register', async (req, res) => {
     }
 });
 
-
-
-
-app.put('/api/users/:userId', async (req, res) => {
-    const { userId } = req.params;
-    const { username, email } = req.body; 
-
-    const db = await getDbConnection();
-    try {
-        await db.execute('UPDATE User SET Username = ?, Email = ? WHERE UserID = ?', [username, email, userId]);
-        res.send({ message: 'User updated' });
-    } catch (error) {
-        res.status(500).send({ message: 'Error updating', error: error.message });
-    } finally {
-        await db.end();
-    }
-});
-
-
+//student 
 app.post('/api/users/login', async (req, res) => {
-    const { username, password } = req.body;
+    const { email, password } = req.body;
 
     const db = await getDbConnection();
     try {
-        const [users] = await db.execute('SELECT * FROM User WHERE Username = ?', [username]);
-        if (users.length && await bcrypt.compare(password, users[0].Password)) {
+        const [users] = await db.execute('SELECT UserID, UniversityID FROM User WHERE Email = ? AND Password = ?', [email, password]);
+        
+        if (users.length) {
             
-            const userId = users[0].UserID; 
-            res.send({ message: 'Login successful', userId: userId });
+            res.send({ message: 'Login successful', userId: users[0].UserID, UniversityID: users[0].UniversityID });
         } else {
             
-            res.status(401).send({ message: 'Invalid username or password' });
+            res.status(401).send({ message: 'Invalid email or password' });
         }
     } catch (error) {
         res.status(500).send({ message: 'Error logging in', error: error.message });
@@ -100,7 +82,25 @@ app.post('/api/users/login', async (req, res) => {
 });
 
 
+//superadmin 
+app.get('/api/listusers', async (req, res) => {
+    const db = await getDbConnection();
+    try {
+        
+        const [users] = await db.execute('SELECT UserID, Email FROM User');
+        
+        
+        res.send({ users });
+    } catch (error) {
+        
+        res.status(500).send({ message: 'Error fetching users', error: error.message });
+    } finally {
+        
+        await db.end();
+    }
+});
 
+//superadmin 
 app.post('/api/universities', async (req, res) => {
     const { name, location, description, numberOfStudents, emailDomain } = req.body;
 
@@ -115,12 +115,12 @@ app.post('/api/universities', async (req, res) => {
     }
 });
 
-
+//superadmin 
 app.get('/api/listuniversities', async (req, res) => {
     const db = await getDbConnection();
     try {
-        const [universities] = await db.query('SELECT * FROM University');
-        res.status(200).json(universities);
+        const [universities] = await db.execute('SELECT * FROM University');
+        res.status(200).json({ universities }); 
     } catch (error) {
         res.status(500).send({ message: 'Error', error: error.message });
     } finally {
@@ -129,69 +129,7 @@ app.get('/api/listuniversities', async (req, res) => {
 });
 
 
-app.put('/api/universities/:universityId', async (req, res) => {
-    const { universityId } = req.params;
-    const { name, location, description, numberOfStudents, emailDomain } = req.body;
-
-    const db = await getDbConnection();
-    try {
-        await db.execute('UPDATE University SET Name = ?, Location = ?, Description = ?, NumberOfStudents = ?, EmailDomain = ? WHERE UniversityID = ?', [name, location, description, numberOfStudents, emailDomain, universityId]);
-        res.send({ message: 'University updated' });
-    } catch (error) {
-        res.status(500).send({ message: 'Error updating', error: error.message });
-    } finally {
-        await db.end();
-    }
-});
-
-
-app.delete('/api/deleteuniversities/:universityId', async (req, res) => {
-    const { universityId } = req.params;
-
-    const db = await getDbConnection();
-    try {
-        await db.execute('DELETE FROM University WHERE UniversityID = ?', [universityId]);
-        res.send({ message: 'University deleted' });
-    } catch (error) {
-        
-        res.status(500).send({ message: 'Error deleting university', error: error.message });
-    } finally {
-        await db.end();
-    }
-});
-
-
-app.post('/api/rsos', async (req, res) => {
-    const { name, universityId } = req.body; 
-
-    const db = await getDbConnection();
-    try {
-        await db.execute('INSERT INTO RSO (Name, UniversityID) VALUES (?, ?)', [name, universityId]);
-        res.status(201).send({ message: 'RSO created successfully' });
-    } catch (error) {
-        res.status(500).send({ message: 'Error creating RSO', error: error.message });
-    } finally {
-        await db.end();
-    }
-});
-
-
-app.post('/api/rsos/:rsoId/join', async (req, res) => {
-    const { rsoId } = req.params;
-    const userId = req.body.userId; 
-
-    const db = await getDbConnection();
-    try {
-        await db.execute('INSERT INTO UserRSOAffiliation (UserID, RSOID, IsAdmin) VALUES (?, ?, false)', [userId, rsoId]);
-        res.status(201).send({ message: 'Successfully joined RSO' });
-    } catch (error) {
-        res.status(500).send({ message: 'Error joining RSO', error: error.message });
-    } finally {
-        await db.end();
-    }
-});
-
-
+//student 
 app.get('/api/listrsos', async (req, res) => {
     const db = await getDbConnection();
     try {
@@ -204,6 +142,7 @@ app.get('/api/listrsos', async (req, res) => {
     }
 });
 
+//admin
 app.put('/api/rsos/:rsoId', async (req, res) => {
     const { rsoId } = req.params;
     const { name, universityId } = req.body;
@@ -219,7 +158,7 @@ app.put('/api/rsos/:rsoId', async (req, res) => {
     }
 });
 
-
+//admin
 app.delete('/api/deletersos/:rsoId', async (req, res) => {
     const { rsoId } = req.params;
 
@@ -234,50 +173,37 @@ app.delete('/api/deletersos/:rsoId', async (req, res) => {
     }
 });
 
-app.post('/api/events', async (req, res) => {
-    const { name, description, time, date, locationId, contactPhone, contactEmail, eventCategoryId, rsoId, visibility } = req.body;
+
+//student - join
+app.post('/api/rsos/:rsoId/users', async (req, res) => {
+    const { rsoId } = req.params;
+    const { userId, isAdmin } = req.body;
 
     const db = await getDbConnection();
     try {
-        const query = 'INSERT INTO Event (Name, Description, Time, Date, LocationID, ContactPhone, ContactEmail, EventCategoryID, RSOID, Visibility, IsApproved) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE)';
-        await db.execute(query, [name, description, time, date, locationId, contactPhone, contactEmail, eventCategoryId, rsoId, visibility]);
-        res.status(201).send({ message: 'Event created successfully' });
-    } catch (error) {
-        res.status(500).send({ message: 'Error', error: error.message });
-    } finally {
-        await db.end();
-    }
-});
+       
+        const [rso] = await db.execute('SELECT RSOID FROM RSO WHERE RSOID = ?', [rsoId]);
+        const [user] = await db.execute('SELECT UserID FROM User WHERE UserID = ?', [userId]);
 
+        if (rso.length === 0) {
+            return res.status(404).send({ message: 'RSO not found' });
+        }
 
-app.get('/api/listevents', async (req, res) => {
-    const { userRole, universityId, rsoId } = req.query; 
-
-    const db = await getDbConnection();
-    try {
-        let query = 'SELECT * FROM Event WHERE IsApproved = TRUE';
-        let conditions = [];
-        let queryParams = [];
+        if (user.length === 0) {
+            return res.status(404).send({ message: 'User not found' });
+        }
 
         
-        if (userRole === 'super_admin' || userRole === 'admin') {
-            
-        } else if (userRole === 'student') {
-            conditions.push('(Visibility = "public" OR (Visibility = "private" AND LocationID IN (SELECT LocationID FROM Location WHERE UniversityID = ?)) OR (Visibility = "RSO" AND RSOID = ?))');
-            queryParams.push(universityId, rsoId);
-        } else {
-            
-            conditions.push('Visibility = "public"');
+        const [existingAffiliation] = await db.execute('SELECT * FROM UserRSOAffiliation WHERE UserID = ? AND RSOID = ?', [userId, rsoId]);
+        if (existingAffiliation.length > 0) {
+            return res.status(409).send({ message: 'User is already a member of this RSO' });
         }
 
-        if (conditions.length) {
-            query += ' AND ' + conditions.join(' AND ');
-        }
-
-        const [events] = await db.query(query, queryParams);
-        res.status(200).json(events);
+        
+        await db.execute('INSERT INTO UserRSOAffiliation (UserID, RSOID, IsAdmin) VALUES (?, ?, ?)', [userId, rsoId, isAdmin]);
+        res.status(201).send({ message: 'User added to RSO successfully' });
     } catch (error) {
-        res.status(500).send({ message: 'Error', error: error.message });
+        res.status(500).send({ message: 'Error adding user to RSO', error: error.message });
     } finally {
         await db.end();
     }
@@ -285,14 +211,139 @@ app.get('/api/listevents', async (req, res) => {
 
 
 
-app.put('/api/events/:eventId', async (req, res) => {
-    const { eventId } = req.params;
-    const { name, description, time, date, locationId, contactPhone, contactEmail, eventCategoryId, visibility } = req.body;
+//student 
+app.delete('/api/rsos/:rsoId/users/:userId', async (req, res) => {
+    const { rsoId, userId } = req.params;
 
     const db = await getDbConnection();
     try {
-        const query = 'UPDATE Event SET Name = ?, Description = ?, Time = ?, Date = ?, LocationID = ?, ContactPhone = ?, ContactEmail = ?, EventCategoryID = ?, Visibility = ? WHERE EventID = ?';
-        await db.execute(query, [name, description, time, date, locationId, contactPhone, contactEmail, eventCategoryId, visibility, eventId]);
+        
+        const [affiliation] = await db.execute('SELECT * FROM UserRSOAffiliation WHERE RSOID = ? AND UserID = ?', [rsoId, userId]);
+        if (affiliation.length === 0) {
+            return res.status(404).send({ message: 'User is not a member of this RSO' });
+        }
+
+        
+        await db.execute('DELETE FROM UserRSOAffiliation WHERE RSOID = ? AND UserID = ?', [rsoId, userId]);
+        res.send({ message: 'User removed from RSO successfully' });
+    } catch (error) {
+        res.status(500).send({ message: 'Error removing user from RSO', error: error.message });
+    } finally {
+        await db.end();
+    }
+});
+
+
+// student 
+app.post('/api/rsos/request', async (req, res) => {
+    const { universityId, name, description, requestedBy, listOfMembers } = req.body;
+    const db = await getDbConnection();
+    try {
+        const query = 'INSERT INTO RSORequests (UniversityID, Name, Description, RequestedBy, Status, ListOfMembers) VALUES (?, ?, ?, ?, "pending", ?)';
+        await db.execute(query, [universityId, name, description, requestedBy, listOfMembers]);
+        res.status(201).send({ message: 'RSO creation request submitted successfully.' });
+    } catch (error) {
+        res.status(500).send({ message: 'Error submitting RSO creation request', error: error.message });
+    } finally {
+        await db.end();
+    }
+});
+
+// superadmin
+app.get('/api/rsos/pendingrequests', async (req, res) => {
+    const db = await getDbConnection();
+    try {
+        const [requests] = await db.execute('SELECT * FROM RSORequests WHERE Status = "pending"');
+        res.status(200).json({ pendingRequests: requests });
+    } catch (error) {
+        res.status(500).send({ message: 'Error retrieving RSO creation requests', error: error.message });
+    } finally {
+        await db.end();
+    }
+});
+
+
+//superadmin 
+app.put('/api/rsos/requests/:requestId', async (req, res) => {
+    const { requestId } = req.params;
+    const { status, listOfUserIds } = req.body; 
+
+    const db = await getDbConnection();
+    try {
+        await db.execute('UPDATE RSORequests SET Status = ? WHERE RequestID = ?', [status, requestId]);
+        
+        if (status === 'approved') {
+           
+            const [requests] = await db.execute('SELECT * FROM RSORequests WHERE RequestID = ?', [requestId]);
+            const request = requests[0];
+            
+            if (request) {
+                const [result] = await db.execute('INSERT INTO RSO (UniversityID, Name, Description) VALUES (?, ?, ?)', [request.UniversityID, request.Name, request.Description]);
+                const rsoId = result.insertId;
+
+               
+                if(request.RequestedBy){
+                    await db.execute('INSERT INTO UserRSOAffiliation (UserID, RSOID, IsAdmin) VALUES (?, ?, ?)', [request.RequestedBy, rsoId, true]);
+                }
+
+               
+                for (const userId of listOfUserIds) {
+                    if (userId !== request.RequestedBy) {
+                        await db.execute('INSERT INTO UserRSOAffiliation (UserID, RSOID, IsAdmin) VALUES (?, ?, ?)', [userId, rsoId, false]);
+                    }
+                }
+            }
+        }
+
+        res.send({ message: `RSO request ${status}.` });
+    } catch (error) {
+        res.status(500).send({ message: `Error updating RSO request status`, error: error.message });
+    } finally {
+        await db.end();
+    }
+});
+
+
+//superadmin
+app.put('/api/rsos/requests/:requestId/deny', async (req, res) => {
+    const { requestId } = req.params;
+
+    const db = await getDbConnection();
+    try {
+       
+        const query = 'UPDATE RSORequests SET Status = "denied" WHERE RequestID = ?';
+        await db.execute(query, [requestId]);
+
+        res.send({ message: 'RSO creation request has been denied successfully.' });
+    } catch (error) {
+        res.status(500).send({ message: 'Error denying RSO creation request', error: error.message });
+    } finally {
+        await db.end();
+    }
+});
+
+
+//admin
+app.put('/api/events/:eventId', async (req, res) => {
+    const { eventId } = req.params;
+    const { 
+        name, description, time, date, locationId, 
+        contactPhone, contactEmail, eventCategoryId, 
+        rsoId, universityId, isVisibleToUniversity, 
+        isVisibleToRSO, madeBy 
+    } = req.body;
+
+    const db = await getDbConnection();
+    try {
+        
+
+        const query = 'UPDATE Event SET Name = ?, Description = ?, Time = ?, Date = ?, LocationID = ?, ContactPhone = ?, ContactEmail = ?, EventCategoryID = ?, RSOID = ?, UniversityID = ?, IsVisibleToUniversity = ?, IsVisibleToRSO = ? WHERE EventID = ? AND MadeBy = ?';
+        await db.execute(query, [
+            name, description, time, date, locationId, 
+            contactPhone, contactEmail, eventCategoryId, 
+            rsoId, universityId, isVisibleToUniversity, 
+            isVisibleToRSO, eventId, madeBy
+        ]);
         res.send({ message: 'Event updated successfully' });
     } catch (error) {
         res.status(500).send({ message: 'Error updating event', error: error.message });
@@ -302,21 +353,7 @@ app.put('/api/events/:eventId', async (req, res) => {
 });
 
 
-app.put('/api/events/:eventId/approve', async (req, res) => {
-    const { eventId } = req.params;
-
-    const db = await getDbConnection();
-    try {
-        await db.execute('UPDATE Event SET IsApproved = TRUE WHERE EventID = ?', [eventId]);
-        res.send({ message: 'Event approved successfully' });
-    } catch (error) {
-        res.status(500).send({ message: 'Error approving event', error: error.message });
-    } finally {
-        await db.end();
-    }
-});
-
-
+//admin
 app.delete('/api/deleteevents/:eventId', async (req, res) => {
     const { eventId } = req.params;
 
@@ -332,18 +369,99 @@ app.delete('/api/deleteevents/:eventId', async (req, res) => {
 });
 
 
-
-
-app.post('/api/rsos/:rsoId/users', async (req, res) => {
-    const { rsoId } = req.params;
-    const { userId, isAdmin } = req.body;
+//admin 
+app.post('/api/events', async (req, res) => {
+    const { name, description, time, date, locationId, contactPhone, contactEmail, eventCategoryId, rsoId, isVisibleToUniversity, isVisibleToRSO, madeBy,universityId } = req.body;
 
     const db = await getDbConnection();
     try {
-        await db.execute('INSERT INTO UserRSOAffiliation (UserID, RSOID, IsAdmin) VALUES (?, ?, ?)', [userId, rsoId, isAdmin]);
-        res.status(201).send({ message: 'User added to RSO successfully' });
+        // Check if the user is an admin of the RSO if an RSO ID is provided
+        if (rsoId) {
+            const [adminCheck] = await db.execute('SELECT * FROM UserRSOAffiliation WHERE UserID = ? AND RSOID = ? AND IsAdmin = TRUE', [madeBy, rsoId]);
+            if (adminCheck.length === 0) {
+                return res.status(403).send({ message: 'User is not an admin of the RSO' });
+            }
+        }
+
+        
+        const query = 'INSERT INTO Event (Name, Description, Time, Date, LocationID, ContactPhone, ContactEmail, EventCategoryID, RSOID,UniversityID, IsVisibleToUniversity, IsVisibleToRSO, IsApproved, MadeBy) VALUES (?, ?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, FALSE, ?)';
+        await db.execute(query, [name, description, time, date, locationId, contactPhone, contactEmail, eventCategoryId, rsoId, universityId,isVisibleToUniversity, isVisibleToRSO, madeBy]);
+        res.status(201).send({ message: 'Event created successfully' });
     } catch (error) {
-        res.status(500).send({ message: 'Error adding user to RSO', error: error.message });
+        res.status(500).send({ message: 'Error creating event', error: error.message });
+    } finally {
+        await db.end();
+    }
+});
+
+//student
+app.get('/api/events/public', async (req, res) => {
+    const db = await getDbConnection();
+    try {
+        const [events] = await db.execute('SELECT * FROM Event WHERE IsPublic = TRUE AND IsApproved = TRUE');
+        res.status(200).json(events);
+    } catch (error) {
+        res.status(500).send({ message: 'Error retrieving public events', error: error.message });
+    } finally {
+        await db.end();
+    }
+});
+
+//student
+app.get('/api/events/private/uni', async (req, res) => {
+    const { universityId } = req.query; 
+
+    const db = await getDbConnection();
+    try {
+        const [events] = await db.execute('SELECT * FROM Event WHERE UniversityID = ? AND IsVisibleToUniversity = TRUE', [universityId]);
+        res.status(200).json(events);
+    } catch (error) {
+        res.status(500).send({ message: 'Error retrieving private university events', error: error.message });
+    } finally {
+        await db.end();
+    }
+});
+
+//student
+app.get('/api/events/private/rso', async (req, res) => {
+    const { userId } = req.query; 
+
+    const db = await getDbConnection();
+    try {
+        
+        const [userRso] = await db.execute('SELECT RSOID FROM UserRSOAffiliation WHERE UserID = ?', [userId]);
+
+        
+        const rsoIds = userRso.map(rso => rso.RSOID);
+
+        
+        if (rsoIds.length > 0) {
+            const query = 'SELECT * FROM Event WHERE RSOID IN (?) AND IsVisibleToRSO = TRUE';
+            const [events] = await db.execute(query, [rsoIds]);
+            res.status(200).json(events);
+        } else {
+            res.status(200).json([]); 
+        }
+    } catch (error) {
+        res.status(500).send({ message: 'Error retrieving private RSO events', error: error.message });
+    } finally {
+        await db.end();
+    }
+});
+
+
+//admin 
+app.put('/api/events/requestpublic/:eventId', async (req, res) => {
+    const { eventId } = req.params;
+
+    const db = await getDbConnection();
+    try {
+        const query = 'UPDATE Event SET PublicStatus = "pending" WHERE EventID = ?';
+        await db.execute(query, [eventId]);
+
+        res.send({ message: 'Public visibility requested for the event successfully.' });
+    } catch (error) {
+        res.status(500).send({ message: 'Error requesting public visibility for the event', error: error.message });
     } finally {
         await db.end();
     }
@@ -351,45 +469,66 @@ app.post('/api/rsos/:rsoId/users', async (req, res) => {
 
 
 
-app.delete('/api/rsos/:rsoId/users/:userId', async (req, res) => {
-    const { rsoId, userId } = req.params;
-
+//superadmin 
+app.get('/api/events/pendingrequest', async (req, res) => {
     const db = await getDbConnection();
     try {
-        await db.execute('DELETE FROM UserRSOAffiliation WHERE RSOID = ? AND UserID = ?', [rsoId, userId]);
-        res.send({ message: 'User removed from RSO successfully' });
+        const query = 'SELECT * FROM Event WHERE PublicStatus = "pending"';
+        const [events] = await db.execute(query);
+
+        res.status(200).json(events);
     } catch (error) {
-        res.status(500).send({ message: 'Error removing user from RSO', error: error.message });
+        res.status(500).send({ message: 'Error retrieving events with pending public requests', error: error.message });
     } finally {
         await db.end();
     }
 });
 
 
-app.put('/api/users/:userId/university', async (req, res) => {
-    const { userId } = req.params;
-    const { universityId } = req.body;
+//superadmin
+app.put('/api/events/:eventId/approve', async (req, res) => {
+    const { eventId } = req.params;
 
     const db = await getDbConnection();
     try {
-        // Assuming there's a field in the User table for UniversityID (not in the provided schema)
-        await db.execute('UPDATE User SET UniversityID = ? WHERE UserID = ?', [universityId, userId]);
-        res.send({ message: 'User’s affiliated university' });
+        
+        await db.execute('UPDATE Event SET PublicStatus = "approved", IsPublic = TRUE WHERE EventID = ?', [eventId]);
+
+        res.send({ message: 'Event approved and made public successfully.' });
     } catch (error) {
-        res.status(500).send({ message: 'Error', error: error.message });
+        res.status(500).send({ message: 'Error approving event and making it public', error: error.message });
     } finally {
         await db.end();
     }
 });
 
 
+//superadmin
+app.put('/api/events/:eventId/deny', async (req, res) => {
+    const { eventId } = req.params;
+
+    const db = await getDbConnection();
+    try {
+        await db.execute('UPDATE Event SET PublicStatus = "denied" WHERE EventID = ?', [eventId]);
+
+        res.send({ message: 'Public visibility request for the event has been denied.' });
+    } catch (error) {
+        res.status(500).send({ message: 'Error denying public visibility request for the event', error: error.message });
+    } finally {
+        await db.end();
+    }
+});
+
+
+
+//student
 app.post('/api/events/:eventId/comments-ratings', async (req, res) => {
     const { eventId } = req.params;
     const { userId, commentText, rating } = req.body; 
 
     const db = await getDbConnection();
     try {
-        // Insert comment or rating or both
+        
         await db.execute('INSERT INTO Comment (EventID, UserID, CommentText, Rating) VALUES (?, ?, ?, ?)', [eventId, userId, commentText, rating || null]);
         res.status(201).send({ message: 'Comment and/or rating added successfully' });
     } catch (error) {
@@ -399,7 +538,7 @@ app.post('/api/events/:eventId/comments-ratings', async (req, res) => {
     }
 });
 
-
+//student
 app.put('/api/events/:eventId/comments-ratings/:commentId', async (req, res) => {
     const { commentId } = req.params;
     const { commentText, rating } = req.body; 
@@ -416,6 +555,7 @@ app.put('/api/events/:eventId/comments-ratings/:commentId', async (req, res) => 
     }
 });
 
+//student 
 app.delete('/api/events/:eventId/comments-ratings/:commentId', async (req, res) => {
     const { commentId } = req.params;
 
@@ -430,12 +570,26 @@ app.delete('/api/events/:eventId/comments-ratings/:commentId', async (req, res) 
     }
 });
 
+//student 
 app.get('/api/events/:eventId/comments-ratings', async (req, res) => {
     const { eventId } = req.params;
 
     const db = await getDbConnection();
     try {
-        const [commentsRatings] = await db.query('SELECT CommentID, UserID, CommentText, Rating, Timestamp FROM Comment WHERE EventID = ?', [eventId]);
+        const query = `
+            SELECT 
+                Comment.CommentID, 
+                Comment.UserID, 
+                User.Email, 
+                Comment.CommentText, 
+                Comment.Rating, 
+                Comment.Timestamp 
+            FROM 
+                Comment 
+            JOIN User ON Comment.UserID = User.UserID 
+            WHERE Comment.EventID = ?`;
+
+        const [commentsRatings] = await db.query(query, [eventId]);
         res.status(200).json(commentsRatings);
     } catch (error) {
         res.status(500).send({ message: 'Error retrieving comments and ratings', error: error.message });
@@ -443,66 +597,3 @@ app.get('/api/events/:eventId/comments-ratings', async (req, res) => {
         await db.end();
     }
 });
-
-app.post('/api/rsos/request', async (req, res) => {
-    const { universityId, name, description, requestedBy } = req.body;
-
-    try {
-        const query = 'INSERT INTO RSORequests (UniversityID, Name, Description, RequestedBy, Status) VALUES (?, ?, ?, ?, "pending")';
-        await db.promise().query(query, [universityId, name, description, requestedBy]);
-        res.status(201).send({ message: 'RSO creation request submitted successfully.' });
-    } catch (error) {
-        res.status(500).send({ message: 'Error submitting RSO creation request', error: error.message });
-    }
-});
-
-
-app.get('/api/rsos/requests', async (req, res) => {
-    try {
-        const [requests] = await db.promise().query('SELECT * FROM RSORequests WHERE Status = "pending"');
-        res.status(200).json(requests);
-    } catch (error) {
-        res.status(500).send({ message: 'Error retrieving RSO creation requests', error: error.message });
-    }
-});
-
-app.put('/api/rsos/requests/:requestId', async (req, res) => {
-    const { requestId } = req.params;
-    const { status } = req.body; 
-
-    try {
-        await db.promise().query('UPDATE RSORequests SET Status = ? WHERE RequestID = ?', [status, requestId]);
-        
-        if (status === 'approved') {
-            // Automatically create the RSO upon approval
-            const [request] = await db.promise().query('SELECT * FROM RSORequests WHERE RequestID = ?', [requestId]);
-            if (request.length > 0) {
-                const requestDetails = request[0];
-                await db.promise().query('INSERT INTO RSO (UniversityID, Name, Description) VALUES (?, ?, ?)', [requestDetails.UniversityID, requestDetails.Name, requestDetails.Description]);
-            }
-        }
-
-        res.send({ message: `RSO request ${status}.` });
-    } catch (error) {
-        res.status(500).send({ message: `Error updating RSO request status`, error: error.message });
-    }
-});
-
-
-app.get('/api/events/pending-approval', async (req, res) => {
-    
-
-    const db = await getDbConnection();
-    try {
-        const query = "SELECT * FROM Event WHERE IsApproved = FALSE AND Visibility = 'public'";
-        const [events] = await db.query(query);
-        res.status(200).json(events);
-    } catch (error) {
-        res.status(500).send({ message: 'Error retrieving events awaiting approval', error: error.message });
-    } finally {
-        await db.end();
-    }
-});
-
-
-

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 
 function Login() {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState(''); 
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
 
@@ -15,7 +15,7 @@ function Login() {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ email, password }), 
     })
       .then((response) => {
         if (!response.ok) {
@@ -25,10 +25,11 @@ function Login() {
       })
       .then((data) => {
         console.log('Success:', data);
-        navigate('/student'); // Redirect to the student page
+        navigate('/student'); 
       })
       .catch((error) => {
         console.error('Error:', error);
+        alert('Invalid email or password'); 
       });
   };
 
@@ -37,8 +38,8 @@ function Login() {
       <h2>Welcome to University Events!</h2>
       <form onSubmit={handleSubmit}>
         <label>
-          Username:
-          <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required />
+          Email: 
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </label>
         <br />
         <label>
