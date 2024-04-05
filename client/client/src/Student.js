@@ -4,7 +4,8 @@
 //leave rso 
 //comment and rate event 
 //req to make rso 
-//req to make public event as a admin of a rso 
+//req to make public event as a admin of a rso, only a already made event can be requested 
+// for example a private uni event or/and a private rso event  
 //admin - CRUD events for rso , also can make private events to uni, Update RSO 
 
 import React, { useState, useEffect } from 'react';
