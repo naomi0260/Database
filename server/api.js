@@ -14,7 +14,7 @@ const mysql = require('mysql2');
 const db = mysql.createPool({
     host: 'localhost',
     user: 'root',
-    password: 'NPalm1@#',
+    password: '1234',
     database: 'university_events'
   });
 
@@ -40,11 +40,11 @@ app.use(bodyParser.json());
 
 //student 
 app.post('/api/users/register', async (req, res) => {
-    const { email, password, universityId } = req.body; // Include universityId in the request
+    const { email, password, universityId } = req.body; 
 
     const db = await getDbConnection();
     try {
-        await db.execute('INSERT INTO User (Email, Password, UniversityID) VALUES (?, ?, ?)', [email, password, universityId]);
+        await db.execute('INSERT INTO User (Email, Password, UniversityID, UserType) VALUES (?, ?, ?, "student")', [email, password, universityId]);
         
         const [[{UserID}]] = await db.execute('SELECT LAST_INSERT_ID() as UserID');
  
@@ -54,32 +54,31 @@ app.post('/api/users/register', async (req, res) => {
         res.status(201).send({ message: 'User registered', UserID, UniversityID: user[0].UniversityID });
     } catch (error) {
         res.status(500).send({ message: 'Error registering', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 //student 
 app.post('/api/users/login', async (req, res) => {
     const { email, password } = req.body;
-
     const db = await getDbConnection();
     try {
-        const [users] = await db.execute('SELECT UserID, UniversityID FROM User WHERE Email = ? AND Password = ?', [email, password]);
+        const [users] = await db.execute('SELECT UserID, UniversityID, UserType FROM User WHERE Email = ? AND Password = ?', [email, password]);
         
         if (users.length) {
-            
-            res.send({ message: 'Login successful', userId: users[0].UserID, UniversityID: users[0].UniversityID });
+            res.send({ 
+              message: 'Login successful', 
+              userId: users[0].UserID, 
+              UniversityID: users[0].UniversityID, 
+              UserType: users[0].UserType 
+            });
         } else {
-            
             res.status(401).send({ message: 'Invalid email or password' });
         }
     } catch (error) {
         res.status(500).send({ message: 'Error logging in', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
+
 
 
 //superadmin 
@@ -94,10 +93,7 @@ app.get('/api/listusers', async (req, res) => {
     } catch (error) {
         
         res.status(500).send({ message: 'Error fetching users', error: error.message });
-    } finally {
-        
-        await db.end();
-    }
+    } 
 });
 
 //superadmin 
@@ -110,9 +106,7 @@ app.post('/api/universities', async (req, res) => {
         res.status(201).send({ message: 'University created' });
     } catch (error) {
         res.status(500).send({ message: 'Error', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 //superadmin 
@@ -123,9 +117,7 @@ app.get('/api/listuniversities', async (req, res) => {
         res.status(200).json({ universities }); 
     } catch (error) {
         res.status(500).send({ message: 'Error', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 
@@ -137,9 +129,7 @@ app.get('/api/listrsos', async (req, res) => {
         res.status(200).json(rsos);
     } catch (error) {
         res.status(500).send({ message: 'Error retrieving RSOs', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 //admin
@@ -153,9 +143,7 @@ app.put('/api/rsos/:rsoId', async (req, res) => {
         res.send({ message: 'RSO updated' });
     } catch (error) {
         res.status(500).send({ message: 'Error', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 //admin
@@ -168,9 +156,7 @@ app.delete('/api/deletersos/:rsoId', async (req, res) => {
         res.send({ message: 'RSO deleted' });
     } catch (error) {
         res.status(500).send({ message: 'Error', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 
@@ -204,9 +190,7 @@ app.post('/api/rsos/:rsoId/users', async (req, res) => {
         res.status(201).send({ message: 'User added to RSO successfully' });
     } catch (error) {
         res.status(500).send({ message: 'Error adding user to RSO', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 
@@ -228,9 +212,7 @@ app.delete('/api/rsos/:rsoId/users/:userId', async (req, res) => {
         res.send({ message: 'User removed from RSO successfully' });
     } catch (error) {
         res.status(500).send({ message: 'Error removing user from RSO', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 
@@ -244,9 +226,7 @@ app.post('/api/rsos/request', async (req, res) => {
         res.status(201).send({ message: 'RSO creation request submitted successfully.' });
     } catch (error) {
         res.status(500).send({ message: 'Error submitting RSO creation request', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 // superadmin
@@ -257,9 +237,7 @@ app.get('/api/rsos/pendingrequests', async (req, res) => {
         res.status(200).json({ pendingRequests: requests });
     } catch (error) {
         res.status(500).send({ message: 'Error retrieving RSO creation requests', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 
@@ -298,9 +276,7 @@ app.put('/api/rsos/requests/:requestId', async (req, res) => {
         res.send({ message: `RSO request ${status}.` });
     } catch (error) {
         res.status(500).send({ message: `Error updating RSO request status`, error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 
@@ -317,9 +293,7 @@ app.put('/api/rsos/requests/:requestId/deny', async (req, res) => {
         res.send({ message: 'RSO creation request has been denied successfully.' });
     } catch (error) {
         res.status(500).send({ message: 'Error denying RSO creation request', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 
@@ -347,9 +321,7 @@ app.put('/api/events/:eventId', async (req, res) => {
         res.send({ message: 'Event updated successfully' });
     } catch (error) {
         res.status(500).send({ message: 'Error updating event', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 
@@ -363,9 +335,7 @@ app.delete('/api/deleteevents/:eventId', async (req, res) => {
         res.send({ message: 'Event deleted successfully' });
     } catch (error) {
         res.status(500).send({ message: 'Error deleting event', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 
@@ -389,22 +359,18 @@ app.post('/api/events', async (req, res) => {
         res.status(201).send({ message: 'Event created successfully' });
     } catch (error) {
         res.status(500).send({ message: 'Error creating event', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 //student
 app.get('/api/events/public', async (req, res) => {
     const db = await getDbConnection();
     try {
-        const [events] = await db.execute('SELECT * FROM Event WHERE IsPublic = TRUE AND IsApproved = TRUE');
+        const [events] = await db.execute('SELECT * FROM Event WHERE IsPublic = TRUE');
         res.status(200).json(events);
     } catch (error) {
         res.status(500).send({ message: 'Error retrieving public events', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 //student
@@ -417,9 +383,7 @@ app.get('/api/events/private/uni', async (req, res) => {
         res.status(200).json(events);
     } catch (error) {
         res.status(500).send({ message: 'Error retrieving private university events', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 //student
@@ -444,9 +408,7 @@ app.get('/api/events/private/rso', async (req, res) => {
         }
     } catch (error) {
         res.status(500).send({ message: 'Error retrieving private RSO events', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 
@@ -462,9 +424,7 @@ app.put('/api/events/requestpublic/:eventId', async (req, res) => {
         res.send({ message: 'Public visibility requested for the event successfully.' });
     } catch (error) {
         res.status(500).send({ message: 'Error requesting public visibility for the event', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 
@@ -479,9 +439,7 @@ app.get('/api/events/pendingrequest', async (req, res) => {
         res.status(200).json(events);
     } catch (error) {
         res.status(500).send({ message: 'Error retrieving events with pending public requests', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 
@@ -497,9 +455,8 @@ app.put('/api/events/:eventId/approve', async (req, res) => {
         res.send({ message: 'Event approved and made public successfully.' });
     } catch (error) {
         res.status(500).send({ message: 'Error approving event and making it public', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
+    
 });
 
 
@@ -514,9 +471,7 @@ app.put('/api/events/:eventId/deny', async (req, res) => {
         res.send({ message: 'Public visibility request for the event has been denied.' });
     } catch (error) {
         res.status(500).send({ message: 'Error denying public visibility request for the event', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 
@@ -533,9 +488,7 @@ app.post('/api/events/:eventId/comments-ratings', async (req, res) => {
         res.status(201).send({ message: 'Comment and/or rating added successfully' });
     } catch (error) {
         res.status(500).send({ message: 'Error adding comment and/or rating', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 //student
@@ -550,9 +503,7 @@ app.put('/api/events/:eventId/comments-ratings/:commentId', async (req, res) => 
         res.send({ message: 'Comment and/or rating updated successfully' });
     } catch (error) {
         res.status(500).send({ message: 'Error updating comment and/or rating', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 //student 
@@ -565,9 +516,7 @@ app.delete('/api/events/:eventId/comments-ratings/:commentId', async (req, res) 
         res.send({ message: 'Comment and/or rating deleted successfully' });
     } catch (error) {
         res.status(500).send({ message: 'Error deleting comment and/or rating', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });
 
 //student 
@@ -593,7 +542,5 @@ app.get('/api/events/:eventId/comments-ratings', async (req, res) => {
         res.status(200).json(commentsRatings);
     } catch (error) {
         res.status(500).send({ message: 'Error retrieving comments and ratings', error: error.message });
-    } finally {
-        await db.end();
-    }
+    } 
 });

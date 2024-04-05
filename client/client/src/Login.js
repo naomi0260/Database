@@ -25,7 +25,17 @@ function Login() {
       })
       .then((data) => {
         console.log('Success:', data);
-        navigate('/student'); 
+       
+        if (data.UserType === 'student') {
+    
+         navigate(`/student/${data.userId}/${data.UniversityID}`);
+        } else if (data.UserType === 'super_admin') {
+   
+         navigate(`/superadmin/${data.userId}`);
+        } else {
+    
+          alert('error user');
+        } 
       })
       .catch((error) => {
         console.error('Error:', error);

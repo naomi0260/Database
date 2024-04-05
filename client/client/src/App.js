@@ -1,19 +1,21 @@
 import './App.css';
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import LoginPage from './Login';
+import Login from './Login';
 import StudentPage from './Student';
-import RegisterPage from './Register';
+import Register from './Register';
+import SuperAdmin from './SuperAdmin';
 
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<LoginPage />} />
-        <Route path="/student" element={<StudentPage />} /> {/* New student route */}
-        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/" element={<Login />} /> 
+        <Route path="/register" element={<Register />} />
+        <Route path="/student/:userId/:universityId" element={<StudentPage />} />
+        <Route path="/superadmin/:userId" element={<SuperAdmin />} />
         
-        {/* Define other routes here */}
+        
       </Routes>
     </Router>
   );

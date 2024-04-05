@@ -5,7 +5,7 @@
 //comment and rate event 
 //req to make rso 
 //req to make public event as a admin of a rso 
-//admin - CRUD events for rso , also can make private events to uni, U RSO 
+//admin - CRUD events for rso , also can make private events to uni, Update RSO 
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios'; // You can use axios for making API requests
