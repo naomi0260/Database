@@ -10,7 +10,7 @@ function SuperAdmin() {
   const [universityEmailDomain, setUniversityEmailDomain] = useState('');
   const [pendingEvents, setPendingEvents] = useState([]);
   const [pendingRSORequests, setPendingRSORequests] = useState([]);
-  const [selectedUsers, setSelectedUsers] = useState([]);
+  
   
 
   useEffect(() => {
@@ -40,25 +40,24 @@ function SuperAdmin() {
   };
   
 
-  const toggleUserSelection = (userId) => {
-    
-    setSelectedUsers([...selectedUsers, userId]); 
-    
-  };
+  
 
   const approveRSORequest = async (requestId) => {
     const response = await fetch(`http://localhost:5010/api/rsos/requests/${requestId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'approved', listOfUserIds: selectedUsers }),
+      method: 'PUT', 
+      headers: {
+        'Content-Type': 'application/json', 
+      },
+      body: JSON.stringify({ status: 'approved' }), 
     });
     if (response.ok) {
       fetchPendingRSORequests(); 
-      setSelectedUsers([]);
     } else {
-      alert('Failed to approve RSO request');
+       
+      alert(`Failed to approve RSO request`);
     }
   };
+  
 
   const denyRSORequest = async (requestId) => {
    
@@ -173,14 +172,14 @@ function SuperAdmin() {
         </ul>
       </section>
       <section>
-        <h2>Select Users for RSO</h2>
+        <h2>Users</h2>
         <ul>
           {users && users.map((user) => (
             <li
               key={user.UserID}
             >
               {user.Email}
-              <button onClick={() => toggleUserSelection(user.UserID)}>Add to RSO</button>
+              
             </li>
           ))}
         </ul>

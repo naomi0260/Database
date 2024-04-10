@@ -82,6 +82,7 @@ app.post('/api/users/login', async (req, res) => {
 
 
 //superadmin 
+//list the users in the DB 
 app.get('/api/listusers', async (req, res) => {
     const db = await getDbConnection();
     try {
@@ -97,6 +98,7 @@ app.get('/api/listusers', async (req, res) => {
 });
 
 //superadmin 
+//Create a University 
 app.post('/api/universities', async (req, res) => {
     const { name, location, description, numberOfStudents, emailDomain } = req.body;
 
@@ -110,6 +112,7 @@ app.post('/api/universities', async (req, res) => {
 });
 
 //superadmin 
+//List all the universities 
 app.get('/api/listuniversities', async (req, res) => {
     const db = await getDbConnection();
     try {
@@ -122,45 +125,76 @@ app.get('/api/listuniversities', async (req, res) => {
 
 
 //student 
+//List all the rso from the uni 
 app.get('/api/listrsos', async (req, res) => {
+    const { universityId } = req.query; 
+
     const db = await getDbConnection();
     try {
-        const [rsos] = await db.query('SELECT * FROM RSO');
+        
+        const [rsos] = await db.execute('SELECT * FROM RSO WHERE UniversityID = ?', [universityId]);
         res.status(200).json(rsos);
     } catch (error) {
         res.status(500).send({ message: 'Error retrieving RSOs', error: error.message });
     } 
 });
 
-//admin
+
+// Admin 
+//need rso id in the params , checks if the user is a admin of the rso 
 app.put('/api/rsos/:rsoId', async (req, res) => {
     const { rsoId } = req.params;
-    const { name, universityId } = req.body;
+    const { userId, name, universityId } = req.body; 
 
     const db = await getDbConnection();
     try {
-        await db.execute('UPDATE RSO SET Name = ?, UniversityID = ? WHERE RSOID = ?', [name, universityId, rsoId]);
-        res.send({ message: 'RSO updated' });
+        
+        const [isAdmin] = await db.execute('SELECT * FROM UserRSOAffiliation WHERE UserID = ? AND RSOID = ? AND IsAdmin = TRUE', [userId, rsoId]);
+
+        if (isAdmin.length > 0) {
+            
+            await db.execute('UPDATE RSO SET Name = ?, UniversityID = ? WHERE RSOID = ?', [name, universityId, rsoId]);
+            res.send({ message: 'RSO updated successfully.' });
+        } else {
+            
+            res.status(403).send({ message: 'Operation not allowed. User is not an admin of the RSO.' });
+        }
     } catch (error) {
-        res.status(500).send({ message: 'Error', error: error.message });
-    } 
+        res.status(500).send({ message: 'Error updating RSO information', error: error.message });
+    }
 });
+
 
 //admin
+//Delete a RSO , need the rso id in the params and userid in the req body 
 app.delete('/api/deletersos/:rsoId', async (req, res) => {
     const { rsoId } = req.params;
+    const { userId } = req.body; 
 
     const db = await getDbConnection();
     try {
-        await db.execute('DELETE FROM RSO WHERE RSOID = ?', [rsoId]);
-        res.send({ message: 'RSO deleted' });
+       
+        const [isAdmin] = await db.execute('SELECT * FROM UserRSOAffiliation WHERE UserID = ? AND RSOID = ? AND IsAdmin = TRUE', [userId, rsoId]);
+
+        if (isAdmin.length > 0) {
+            
+            await db.execute('DELETE FROM RSO WHERE RSOID = ?', [rsoId]);
+            res.send({ message: 'RSO deleted successfully.' });
+        } else {
+            
+            res.status(403).send({ message: 'Unauthorized: Only RSO admins can delete the RSO.' });
+        }
     } catch (error) {
-        res.status(500).send({ message: 'Error', error: error.message });
-    } 
+        res.status(500).send({ message: 'Error deleting RSO', error: error.message });
+    } finally {
+        await db.end();
+    }
 });
 
 
-//student - join
+
+//student 
+//join a rso , need the rso id in the params 
 app.post('/api/rsos/:rsoId/users', async (req, res) => {
     const { rsoId } = req.params;
     const { userId, isAdmin } = req.body;
@@ -196,6 +230,7 @@ app.post('/api/rsos/:rsoId/users', async (req, res) => {
 
 
 //student 
+//leave a rso , need the rso id and the user id in the params 
 app.delete('/api/rsos/:rsoId/users/:userId', async (req, res) => {
     const { rsoId, userId } = req.params;
 
@@ -217,19 +252,29 @@ app.delete('/api/rsos/:rsoId/users/:userId', async (req, res) => {
 
 
 // student 
+//request a rso , listofmembers must be a array of emails 
 app.post('/api/rsos/request', async (req, res) => {
     const { universityId, name, description, requestedBy, listOfMembers } = req.body;
     const db = await getDbConnection();
+
     try {
+        // Ensure listOfMembers is an array of strings (e.g., emails) and convert it to a JSON string
+        if (!Array.isArray(listOfMembers) || !listOfMembers.every(email => typeof email === 'string')) {
+            return res.status(400).send({ message: 'Invalid listOfMembers format. Must be an array of strings.' });
+        }
+        const listOfMembersJson = JSON.stringify(listOfMembers);
+
         const query = 'INSERT INTO RSORequests (UniversityID, Name, Description, RequestedBy, Status, ListOfMembers) VALUES (?, ?, ?, ?, "pending", ?)';
-        await db.execute(query, [universityId, name, description, requestedBy, listOfMembers]);
+        await db.execute(query, [universityId, name, description, requestedBy, listOfMembersJson]);
         res.status(201).send({ message: 'RSO creation request submitted successfully.' });
     } catch (error) {
         res.status(500).send({ message: 'Error submitting RSO creation request', error: error.message });
-    } 
+    }
 });
 
+
 // superadmin
+//list all pendingrequest 
 app.get('/api/rsos/pendingrequests', async (req, res) => {
     const db = await getDbConnection();
     try {
@@ -242,45 +287,74 @@ app.get('/api/rsos/pendingrequests', async (req, res) => {
 
 
 //superadmin 
+// approves a RSO request
 app.put('/api/rsos/requests/:requestId', async (req, res) => {
     const { requestId } = req.params;
-    const { status, listOfUserIds } = req.body; 
-
+    const { status } = req.body; 
     const db = await getDbConnection();
+
     try {
+        
         await db.execute('UPDATE RSORequests SET Status = ? WHERE RequestID = ?', [status, requestId]);
         
         if (status === 'approved') {
-           
             const [requests] = await db.execute('SELECT * FROM RSORequests WHERE RequestID = ?', [requestId]);
             const request = requests[0];
             
             if (request) {
+                
                 const [result] = await db.execute('INSERT INTO RSO (UniversityID, Name, Description) VALUES (?, ?, ?)', [request.UniversityID, request.Name, request.Description]);
                 const rsoId = result.insertId;
+                const addedMembers = [];
+                const notFoundMembers = [];
 
-               
+                // Insert RSO admin record
                 if(request.RequestedBy){
                     await db.execute('INSERT INTO UserRSOAffiliation (UserID, RSOID, IsAdmin) VALUES (?, ?, ?)', [request.RequestedBy, rsoId, true]);
-                }
-
-               
-                for (const userId of listOfUserIds) {
-                    if (userId !== request.RequestedBy) {
-                        await db.execute('INSERT INTO UserRSOAffiliation (UserID, RSOID, IsAdmin) VALUES (?, ?, ?)', [userId, rsoId, false]);
+                    const [admin] = await db.execute('SELECT Email FROM User WHERE UserID = ?', [request.RequestedBy]);
+                    if (admin.length > 0) {
+                        addedMembers.push(admin[0].Email);
                     }
                 }
-            }
-        }
 
-        res.send({ message: `RSO request ${status}.` });
+                
+                const listOfMembers = JSON.parse(request.ListOfMembers);
+
+                
+                for (const email of listOfMembers) {
+                    const [users] = await db.execute('SELECT UserID FROM User WHERE Email = ?', [email]);
+                    if (users.length > 0) {
+                        const userId = users[0].UserID;
+                        if (userId !== request.RequestedBy) { 
+                            await db.execute('INSERT INTO UserRSOAffiliation (UserID, RSOID, IsAdmin) VALUES (?, ?, ?)', [userId, rsoId, false]);
+                            addedMembers.push(email);
+                        }
+                    } else {
+                        notFoundMembers.push(email);
+                    }
+                }
+
+                
+                res.send({
+                    message: `RSO request ${status}.`,
+                    addedMembers: addedMembers,
+                    notFoundMembers: notFoundMembers
+                });
+            } else {
+                res.status(404).send({ message: "RSO request not found." });
+            }
+        } else {
+            res.send({ message: `RSO request ${status}.` });
+        }
     } catch (error) {
         res.status(500).send({ message: `Error updating RSO request status`, error: error.message });
-    } 
+    }
 });
 
 
+
 //superadmin
+//deny a rso request 
 app.put('/api/rsos/requests/:requestId/deny', async (req, res) => {
     const { requestId } = req.params;
 
@@ -298,18 +372,23 @@ app.put('/api/rsos/requests/:requestId/deny', async (req, res) => {
 
 
 //admin
+//update a event for the rso or/and univeristy 
+// IsVisibleToUniversity = ? true/false for unniversity 
+//IsVisibleToRSO = ? true/false for rso 
 app.put('/api/events/:eventId', async (req, res) => {
     const { eventId } = req.params;
     const { 
         name, description, time, date, locationId, 
         contactPhone, contactEmail, eventCategoryId, 
         rsoId, universityId, isVisibleToUniversity, 
-        isVisibleToRSO, madeBy 
+        isVisibleToRSO, madeBy,userId 
     } = req.body;
 
     const db = await getDbConnection();
     try {
-        
+        const [isAdmin] = await db.execute('SELECT * FROM UserRSOAffiliation WHERE UserID = ? AND RSOID = ? AND IsAdmin = TRUE', [userId, rsoId]);
+
+        if (isAdmin.length > 0) {
 
         const query = 'UPDATE Event SET Name = ?, Description = ?, Time = ?, Date = ?, LocationID = ?, ContactPhone = ?, ContactEmail = ?, EventCategoryID = ?, RSOID = ?, UniversityID = ?, IsVisibleToUniversity = ?, IsVisibleToRSO = ? WHERE EventID = ? AND MadeBy = ?';
         await db.execute(query, [
@@ -319,6 +398,9 @@ app.put('/api/events/:eventId', async (req, res) => {
             isVisibleToRSO, eventId, madeBy
         ]);
         res.send({ message: 'Event updated successfully' });
+    }else{
+        res.status(403).send({ message: 'Unauthorized: Only RSO admins can create events for RSO.' });
+    }
     } catch (error) {
         res.status(500).send({ message: 'Error updating event', error: error.message });
     } 
@@ -326,11 +408,13 @@ app.put('/api/events/:eventId', async (req, res) => {
 
 
 //admin
+//delete a event , can be used for any type of event 
 app.delete('/api/deleteevents/:eventId', async (req, res) => {
     const { eventId } = req.params;
 
     const db = await getDbConnection();
     try {
+        
         await db.execute('DELETE FROM Event WHERE EventID = ?', [eventId]);
         res.send({ message: 'Event deleted successfully' });
     } catch (error) {
@@ -339,7 +423,10 @@ app.delete('/api/deleteevents/:eventId', async (req, res) => {
 });
 
 
-//admin 
+//admin of rso 
+//create a event 
+// IsVisibleToUniversity = ? true/false for unniversity 
+//IsVisibleToRSO = ? true/false for rso 
 app.post('/api/events', async (req, res) => {
     const { name, description, time, date, locationId, contactPhone, contactEmail, eventCategoryId, rsoId, isVisibleToUniversity, isVisibleToRSO, madeBy,universityId } = req.body;
 
@@ -363,6 +450,7 @@ app.post('/api/events', async (req, res) => {
 });
 
 //student
+//list all public events 
 app.get('/api/events/public', async (req, res) => {
     const db = await getDbConnection();
     try {
@@ -374,6 +462,7 @@ app.get('/api/events/public', async (req, res) => {
 });
 
 //student
+//list all events that are private to the university 
 app.get('/api/events/private/uni', async (req, res) => {
     const { universityId } = req.query; 
 
@@ -387,6 +476,7 @@ app.get('/api/events/private/uni', async (req, res) => {
 });
 
 //student
+//list all events that private to the rso 
 app.get('/api/events/private/rso', async (req, res) => {
     const { userId } = req.query; 
 
@@ -413,6 +503,7 @@ app.get('/api/events/private/rso', async (req, res) => {
 
 
 //admin 
+//a already made event of a rso or priavte univeristy can be requested to be public 
 app.put('/api/events/requestpublic/:eventId', async (req, res) => {
     const { eventId } = req.params;
 
@@ -427,9 +518,31 @@ app.put('/api/events/requestpublic/:eventId', async (req, res) => {
     } 
 });
 
+//Student 
+//create a event and request a public event , can be done by a student 
+app.post('/api/events/public', async (req, res) => {
+    const { name, description, time, date, location, contactPhone, contactEmail, eventCategoryID, universityID, madeBy } = req.body;
+
+    const db = await getDbConnection();
+    try {
+        
+        const query = `INSERT INTO Event (Name, Description, Time, Date, Location, ContactPhone, ContactEmail, EventCategoryID, UniversityID, IsPublic, PublicStatus, MadeBy) 
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE, 'pending', ?)`;
+        await db.execute(query, [name, description, time, date, location, contactPhone, contactEmail, eventCategoryID, universityID, madeBy]);
+
+        res.status(201).send({ message: 'Public event creation request submitted successfully.' });
+    } catch (error) {
+        res.status(500).send({ message: 'Error submitting public event creation request', error: error.message });
+    } finally {
+        await db.end();
+    }
+});
+
+
 
 
 //superadmin 
+//get all peneding public events request 
 app.get('/api/events/pendingrequest', async (req, res) => {
     const db = await getDbConnection();
     try {
@@ -444,6 +557,7 @@ app.get('/api/events/pendingrequest', async (req, res) => {
 
 
 //superadmin
+//approve the public event 
 app.put('/api/events/:eventId/approve', async (req, res) => {
     const { eventId } = req.params;
 
@@ -461,6 +575,7 @@ app.put('/api/events/:eventId/approve', async (req, res) => {
 
 
 //superadmin
+//deny the public event 
 app.put('/api/events/:eventId/deny', async (req, res) => {
     const { eventId } = req.params;
 
@@ -477,6 +592,7 @@ app.put('/api/events/:eventId/deny', async (req, res) => {
 
 
 //student
+//rate/comment a event 
 app.post('/api/events/:eventId/comments-ratings', async (req, res) => {
     const { eventId } = req.params;
     const { userId, commentText, rating } = req.body; 
@@ -492,6 +608,7 @@ app.post('/api/events/:eventId/comments-ratings', async (req, res) => {
 });
 
 //student
+//update a rating/comment of a event 
 app.put('/api/events/:eventId/comments-ratings/:commentId', async (req, res) => {
     const { commentId } = req.params;
     const { commentText, rating } = req.body; 
@@ -507,6 +624,7 @@ app.put('/api/events/:eventId/comments-ratings/:commentId', async (req, res) => 
 });
 
 //student 
+//delete a rate/comment 
 app.delete('/api/events/:eventId/comments-ratings/:commentId', async (req, res) => {
     const { commentId } = req.params;
 
@@ -520,6 +638,7 @@ app.delete('/api/events/:eventId/comments-ratings/:commentId', async (req, res) 
 });
 
 //student 
+//list all comments/ratings of a event 
 app.get('/api/events/:eventId/comments-ratings', async (req, res) => {
     const { eventId } = req.params;
 

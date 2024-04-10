@@ -28,29 +28,16 @@ CREATE TABLE RSO (
 );
 
 
-CREATE TABLE EventCategory (
-    EventCategoryID INT PRIMARY KEY AUTO_INCREMENT,
-    CategoryName VARCHAR(255) NOT NULL
-);
-
-CREATE TABLE Location (
-    LocationID INT PRIMARY KEY AUTO_INCREMENT,
-    Name VARCHAR(255) NOT NULL,
-    Latitude DECIMAL(9,6),
-    Longitude DECIMAL(9,6),
-    AdditionalDetails TEXT
-);
-
 CREATE TABLE Event (
     EventID INT PRIMARY KEY AUTO_INCREMENT,
     Name VARCHAR(255) NOT NULL,
     Description TEXT,
     Time DATETIME,
     Date DATE,
-    LocationID INT,
+    Location VARCHAR(255) NOT NULL,
     ContactPhone VARCHAR(20),
     ContactEmail VARCHAR(255),
-    EventCategoryID INT,
+    EventCategoryID VARCHAR(255),
     RSOID INT, -- This is optional to support events not linked to an RSO
     UniversityID INT,
     IsPublic BOOLEAN DEFAULT FALSE, -- Event is public
@@ -60,8 +47,6 @@ CREATE TABLE Event (
     IsVisibleToUniversity BOOLEAN DEFAULT FALSE, -- Event is visible to the university
     IsVisibleToRSO BOOLEAN DEFAULT FALSE, -- Event is visible to the RSO
     MadeBy INT, -- UserID of the event creator
-    FOREIGN KEY (LocationID) REFERENCES Location(LocationID),
-    FOREIGN KEY (EventCategoryID) REFERENCES EventCategory(EventCategoryID),
     FOREIGN KEY (RSOID) REFERENCES RSO(RSOID),
     FOREIGN KEY (UniversityID) REFERENCES University(UniversityID),
     FOREIGN KEY (MadeBy) REFERENCES User(UserID) -- New foreign key constraint for MadeBy
