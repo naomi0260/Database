@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from './userContext';
 
 function Login() {
   const [email, setEmail] = useState(''); 
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
+  const { setUser } = useUser();
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -25,6 +27,7 @@ function Login() {
       })
       .then((data) => {
         console.log('Success:', data);
+        setUser(data);
        
         if (data.UserType === 'student') {
     
