@@ -7,7 +7,7 @@ function Login() {
   const [email, setEmail] = useState(''); 
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
-  const { setUser } = useUser();
+  const { user, setUser} = useUser();
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -26,10 +26,16 @@ function Login() {
         return response.json();
       })
       .then((data) => {
-        console.log('Success:', data);
-        setUser(data);
-       
-        if (data.UserType === 'student') {
+        console.log('Data:', data);
+        console.log('setUser function:', setUser);
+        setUser({
+          userId: data.userId,
+          universityId: data.UniversityID,
+          userEmail: email,
+          userType: data.UserType,
+        });
+        console.log('User after setUser:', user);
+        if (data.UserType === 'student' || data.UserType === 'admin') {
     
          navigate(`/student/${data.userId}/${data.UniversityID}`);
         } else if (data.UserType === 'super_admin') {

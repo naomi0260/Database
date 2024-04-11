@@ -315,6 +315,9 @@ app.put('/api/rsos/requests/:requestId', async (req, res) => {
                     if (admin.length > 0) {
                         addedMembers.push(admin[0].Email);
                     }
+                    
+                    // Update user type to admin
+                    await db.execute('UPDATE User SET UserType = ? WHERE UserID = ?', ['admin', request.RequestedBy]);
                 }
 
                 
