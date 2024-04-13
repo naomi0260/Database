@@ -154,7 +154,7 @@ const StudentPage = () => {
       name,
       description,
       requestedBy: user.userId,
-      listOfMembers
+      listOfMembers:listOfMembers
     })
     .then(() => {
       alert('RSO creation request submitted successfully.');

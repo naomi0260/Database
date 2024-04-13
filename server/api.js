@@ -14,7 +14,7 @@ const mysql = require('mysql2');
 const db = mysql.createPool({
     host: 'localhost',
     user: 'root',
-    password: 'NPalm1@#',
+    password: '1234',
     database: 'university_events'
   });
 
@@ -457,7 +457,7 @@ app.post('/api/events', async (req, res) => {
     try {
         // Check if the user is an admin of the RSO if an RSO ID is provided
         if (rsoId) {
-            const [adminCheck] = await db.execute('SELECT * FROM UserRSOAffiliation WHERE UserID = ? AND RSOID = ? AND IsAdmin = 1', [madeBy, rsoId]);
+            const [adminCheck] = await db.execute('SELECT * FROM UserRSOAffiliation WHERE UserID = ? AND RSOID = ? AND IsAdmin = TRUE', [madeBy, rsoId]);
 
             if (adminCheck.length === 0) {
                 return res.status(403).send({ message: 'User is not an admin of the RSO' });

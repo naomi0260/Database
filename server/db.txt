@@ -24,6 +24,7 @@ CREATE TABLE RSO (
     RSOID INT PRIMARY KEY AUTO_INCREMENT,
     UniversityID INT,
     Name VARCHAR(255) NOT NULL,
+    Description TEXT,
     FOREIGN KEY (UniversityID) REFERENCES University(UniversityID)
 );
 
@@ -32,7 +33,7 @@ CREATE TABLE Event (
     EventID INT PRIMARY KEY AUTO_INCREMENT,
     Name VARCHAR(255) NOT NULL,
     Description TEXT,
-    Time DATETIME,
+    Time TIME,
     Date DATE,
     Location VARCHAR(255) NOT NULL,
     ContactPhone VARCHAR(20),

@@ -29,6 +29,7 @@ function SuperAdmin() {
         const data = await response.json();
         
         setPendingRSORequests(data.pendingRequests || []);
+        console.log(data.pendingRequests);
       } else {
         
         console.error('Failed to fetch pending RSO requests:', response.statusText);
@@ -202,7 +203,7 @@ function SuperAdmin() {
         <ul>
           {pendingEvents && pendingEvents.map((event) => (
             <li key={event.EventID}>
-              {event.Name} - {event.Description}
+              {event.Name} - {event.Description} 
               <button onClick={() => approveEvent(event.EventID)}>Approve</button>
               <button onClick={() => denyEvent(event.EventID)}>Deny</button>
             </li>
@@ -212,13 +213,27 @@ function SuperAdmin() {
       <section>
         <h2>Pending RSO Requests</h2>
         <ul>
-          {pendingRSORequests && pendingRSORequests.map((request) => (
-            <li key={request.RequestID}>
-              {request.Name} - {request.Description}
-              <button onClick={() => approveRSORequest(request.RequestID)}>Approve</button>
-              <button onClick={() => denyRSORequest(request.RequestID)}>Deny</button>
-            </li>
-          ))}
+        {pendingRSORequests && pendingRSORequests.map((request) => {
+    let members = [];
+    try {
+        members = JSON.parse(request.ListOfMembers);
+    } catch (error) {
+        console.error('Failed to parse members list:', error);
+    }
+
+    return (
+        <li key={request.RequestID}>
+          {request.Name} - {request.Description}
+          <p>List of Members:
+            {members.map((email, index) => (
+              <span key={index}>{email}{index < members.length - 1 ? ', ' : ''}</span>
+            ))}
+          </p>
+          <button onClick={() => approveRSORequest(request.RequestID)}>Approve</button>
+          <button onClick={() => denyRSORequest(request.RequestID)}>Deny</button>
+        </li>
+    );
+})}
         </ul>
       </section>
 
