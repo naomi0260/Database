@@ -10,6 +10,9 @@ const EventsTable = ({ events, title}) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [comments, setComments] = useState([]); // Define comments and setComments
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editedCommentText, setEditedCommentText] = useState('');
+  const [editedCommentRating, setEditedCommentRating] = useState('');
 
   const openModal = (event) => {
     setSelectedEvent(event);
@@ -23,6 +26,32 @@ const EventsTable = ({ events, title}) => {
     setModalOpen(false);
   };
 
+  const handleEdit = (commentId, commentText, commentRating) => {
+
+    console.log("Handle edit",commentId, commentText, commentRating);
+    setEditingCommentId(commentId);
+    setEditedCommentText(commentText);
+    setEditedCommentRating(commentRating);
+  };
+
+  const handleDelete = async (eventId, commentId) => {
+    try {
+      const response = await fetch(`http://localhost:5010/api/events/${eventId}/comments-ratings/${commentId}`, {
+        method: 'DELETE',
+      });
+  
+      if (!response.ok) {
+        throw new Error('Error deleting comment');
+      }
+  
+      // Remove the deleted comment from the state
+      setComments(comments.filter(comment => comment.id !== commentId));
+      fetchComments(eventId);
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
   const fetchComments = async (event) => {
     try {
       const response = await fetch(`http://localhost:5010/api/events/${event.EventID}/comments-ratings`);
@@ -32,7 +61,6 @@ const EventsTable = ({ events, title}) => {
       }
   
       const commentsRatings = await response.json();
-      console.log("coments", commentsRatings);
       setComments(commentsRatings);
     } catch (error) {
       alert(error.message);
@@ -74,6 +102,35 @@ const EventsTable = ({ events, title}) => {
       }
     } catch (error) {
       alert('Error adding comment and/or rating');
+    }
+  };
+
+  const handleSave = async (selectedEvent) => {
+
+    console.log("Handle save",editedCommentText, editedCommentRating);
+    try {
+      const response = await fetch(`http://localhost:5010/api/events/${selectedEvent.EventID}/comments-ratings/${editingCommentId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ commentText: editedCommentText, rating: editedCommentRating }),
+      });
+  
+      if (!response.ok) {
+        throw new Error('Error updating comment');
+      }
+  
+      // Update the comment in the state
+      setComments(comments.map(comment => comment.id === editingCommentId ? { ...comment, CommentText: editedCommentText, Rating: editedCommentRating } : comment));
+  
+      // Reset editingCommentId, editedCommentText, and editedCommentRating
+      setEditingCommentId(null);
+      setEditedCommentText('');
+      setEditedCommentRating('');
+      fetchComments(selectedEvent);
+    } catch (error) {
+      alert(error.message);
     }
   };
 
@@ -125,10 +182,22 @@ const EventsTable = ({ events, title}) => {
           <input type="submit" value="Submit" />
         </form>
         <div>
-          {comments.map((comment, index) => (
-            <div key={index}>
-              <p>{comment.CommentText}, Rating: {comment.Rating}</p>
+        {comments.map((comment, index) => (
+    <div key={index}>
+      {editingCommentId === comment.CommentID ? (
+            <div>
+              <input type="text" value={editedCommentText} onChange={e => setEditedCommentText(e.target.value)} />
+              <input type="number" value={editedCommentRating} onChange={e => setEditedCommentRating(e.target.value)} />
+              <button onClick={() => handleSave(selectedEvent)}>Save</button>
             </div>
+          ) : (
+            <div>
+              <p>{comment.CommentText}, Rating: {comment.Rating}</p>
+              <button onClick={() => handleEdit(comment.CommentID, comment.CommentText, comment.Rating)}>Edit</button>
+              <button onClick={() => handleDelete(selectedEvent.EventID, comment.CommentID)}>Delete</button>
+            </div>
+          )}
+              </div>
           ))}
         </div>
       </Modal>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 function SuperAdmin() {
   const [users, setUsers] = useState([]);
@@ -10,6 +11,7 @@ function SuperAdmin() {
   const [universityEmailDomain, setUniversityEmailDomain] = useState('');
   const [pendingEvents, setPendingEvents] = useState([]);
   const [pendingRSORequests, setPendingRSORequests] = useState([]);
+  const navigate = useNavigate();
   
   
 
@@ -219,6 +221,9 @@ function SuperAdmin() {
           ))}
         </ul>
       </section>
+
+      <button onClick={() => navigate(`/`)}> Logout </button>
+
     </div>
   );
 }

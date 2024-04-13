@@ -144,9 +144,7 @@ app.get('/api/listrsos', async (req, res) => {
 //need rso id in the params , checks if the user is a admin of the rso 
 app.put('/api/rsos/:rsoId', async (req, res) => {
     const { rsoId } = req.params;
-    const { userId, name, universityId } = req.body; 
-
-    console.log("rsoId: ", rsoId);
+    const { userId, name, universityId } = req.body;
 
     const db = await getDbConnection();
     try {
@@ -461,7 +459,6 @@ app.post('/api/events', async (req, res) => {
         if (rsoId) {
             const [adminCheck] = await db.execute('SELECT * FROM UserRSOAffiliation WHERE UserID = ? AND RSOID = ? AND IsAdmin = 1', [madeBy, rsoId]);
 
-            console.log("adminCheck: ", adminCheck);
             if (adminCheck.length === 0) {
                 return res.status(403).send({ message: 'User is not an admin of the RSO' });
             }
@@ -514,10 +511,8 @@ app.get('/api/events/private/rso', async (req, res) => {
 
         
         if (rsoIds.length > 0) {
-            console.log("rsoIds: ", rsoIds);
             const query = 'SELECT * FROM Event WHERE RSOID IN (?) AND IsVisibleToRSO = TRUE';
             const [events] = await db.execute(query, (rsoIds));
-            console.log("events: ", events);
             res.status(200).json(events);
         } else {
             res.status(200).json([]); 
@@ -640,12 +635,14 @@ app.put('/api/events/:eventId/comments-ratings/:commentId', async (req, res) => 
     const { commentId } = req.params;
     const { commentText, rating } = req.body; 
 
+    console.log(commentId, commentText, rating);
     const db = await getDbConnection();
     try {
         
         await db.execute('UPDATE Comment SET CommentText = ?, Rating = ? WHERE CommentID = ?', [commentText || null, rating, commentId]);
         res.send({ message: 'Comment and/or rating updated successfully' });
     } catch (error) {
+        console.log(error);
         res.status(500).send({ message: 'Error updating comment and/or rating', error: error.message });
     } 
 });
