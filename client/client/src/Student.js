@@ -50,6 +50,7 @@ const StudentPage = () => {
   const [rsoEventDate, setRsoEventDate] = useState('');
   const [rsoEventLocation, setRsoEventLocation] = useState('');
   const [rsoEventContactPhone, setRsoEventContactPhone] = useState('');
+  const [eventType, setEventType] = useState('');
 
 
 
@@ -68,30 +69,58 @@ const StudentPage = () => {
 
     // Fetch private events for the student's university
     if (user) {
-      const universityId = user.universityId;
       axios.get(`http://localhost:5010/api/events/private/uni?universityId=${user.universityId}`)
         .then((response) => setPrivateEvents(response.data))
         .catch((error) => console.error('Error fetching private events:', error));
 
+      const universityId = user.universityId;
       // Fetch RSOs for the student's university
       axios.get('http://localhost:5010/api/listrsos', { params: { universityId } })
         .then((response) => setRsoList(response.data))
         .catch((error) => console.error('Error fetching RSOs:', error));
+        console.log('RSO List:', rsoList);
 
       // Fetch RSO events for the student
       axios.get(`http://localhost:5010/api/events/private/rso?userId=${user.userId}`)
         .then((response) => setRsoEvents(response.data))
         .catch((error) => console.error('Error fetching RSO events:', error));
       
-        if(user.usertype === 'admin'){
-          setIsAdmin(true);
-        }
+        checkUserType(user);
     }
     console.log('Public Events:', publicEvents);
     console.log('Private Events:', privateEvents);
 
   }, [user]);
 
+
+  const checkUserType = (user) => {
+    if(user.userType === 'admin'){
+      setIsAdmin(true);
+    }
+  }
+
+  const checkIfUserIsAdmin = async (userId, rsoId) => {
+    console.log('Checking if user is admin:', userId, rsoId);
+    try {
+      const response = await fetch(`http://localhost:5010/api/isadmin/${userId}/${rsoId}`);
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      const data = await response.json();
+  
+      console.log('Data:', data);
+      if (data.isAdmin) {
+        return true;
+      } else {
+        return false;
+      }
+    } catch (error) {
+      console.error('Error checking if user is admin:', error);
+      return false;
+    }
+  };
 
   const handleRSOChange = (e) => {
     const id = e.target.value;
@@ -100,6 +129,27 @@ const StudentPage = () => {
       setSelectedRSO(selectedRSO);
     }
   };
+
+  const handleEventTypeChange = (event) => {
+    setEventType(event.target.value);
+  };
+
+  const handleEventRSOChange = (event) => {
+    console.log('Selected RSO:', event.target.value);
+    const id = event.target.value;
+    const selectedRSO = rsoList.find(rso => rso.Name === id);
+    if (selectedRSO) {
+      setSelectedRSO(selectedRSO);
+    }
+  };
+
+  function renderButton() {
+    if (isAdmin) {
+      return <button onClick={() => setCreateRsoEventModalIsOpen(true)}>Add RSO Event</button>;
+    } else {
+      return null;
+    }
+  }
 
   const submitRSORequest = () => {
 
@@ -140,7 +190,6 @@ const StudentPage = () => {
       setJoinModalIsOpen(false);
     })
     .catch((error) => {
-      console.error('Error adding user to RSO:', error);
       alert('Error adding user to RSO: ' + error.message);
     });
   };
@@ -171,18 +220,41 @@ const StudentPage = () => {
       if (response.ok) {
         alert(data.message);
         setCreateEventModalIsOpen(false);
+        axios.get('http://localhost:5010/api/events/public')
+          .then((response) => {
+            setPublicEvents(response.data);
+          })
+          .catch((error) => console.error('Error fetching public events:', error));
+          
       } else {
         alert(data.message);
       }
     } catch (error) {
-      console.error('Error creating event:', error);
       alert('Error creating event');
     }
   };
 
   const createRsoEvent = async () => {
+    let visibilityToUniversity = false;
+    let visibilityToRSO = false;
+    let eventID = '';
+    if (eventType === '1') {
+      visibilityToUniversity = true;
+      eventID = 'university';
+    }else if (eventType === '2') {
+      visibilityToRSO = true;
+      eventID = 'rso';
+    }
+
+    const isUserAdmin = await checkIfUserIsAdmin(user.userId, selectedRSO.RSOID);
+    if (!isUserAdmin) {
+      alert('You must be an admin of the RSO to create an event.');
+      return;
+    }
+
+    console.log('event: ', eventID)
     try {
-      const response = await fetch('/api/events', {
+      const response = await fetch('http://localhost:5010/api/events', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -192,22 +264,31 @@ const StudentPage = () => {
           description: rsoEventDescription,
           time: rsoEventTime,
           date: rsoEventDate,
-          locationId: rsoEventLocation,
+          location: rsoEventLocation,
           contactPhone: rsoEventContactPhone,
-          // rsoId: /* RSO ID */,
-          // isVisibleToUniversity: /* Visibility to university */,
-          // isVisibleToRSO: /* Visibility to RSO */,
+          contactEmail: user.userEmail,
+          eventCategoryID: eventID,
+          rsoId: selectedRSO.RSOID,
+          isVisibleToUniversity: visibilityToUniversity,
+          isVisibleToRSO: visibilityToRSO,
           madeBy: user.userId,
           universityId: user.universityId,
         }),
       });
-  
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
   
       const data = await response.json();
-      console.log(data.message);
+      axios.get(`http://localhost:5010/api/events/private/uni?universityId=${user.universityId}`)
+        .then((response) => setPrivateEvents(response.data))
+        .catch((error) => console.error('Error fetching private events:', error));
+
+      axios.get(`http://localhost:5010/api/events/private/rso?userId=${user.userId}`)
+        .then((response) => setRsoEvents(response.data))
+        .catch((error) => console.error('Error fetching RSO events:', error));
+      
     } catch (error) {
       console.error('Error creating RSO event:', error);
     }
@@ -221,9 +302,7 @@ const StudentPage = () => {
 
       <button onClick={() => setCreateEventModalIsOpen(true)}>Create Event</button>
 
-      {isAdmin && (
-        <button onClick={() => setCreateRsoEventModalIsOpen(true)}>Add RSO Event</button>
-      )}
+      {renderButton()}
 
       <Modal isOpen={createEventModalIsOpen} onRequestClose={() => setCreateEventModalIsOpen(false)}>
         <h2>Create Event</h2>
@@ -244,7 +323,22 @@ const StudentPage = () => {
         <input type="date" onChange={e => setRsoEventDate(e.target.value)} />
         <input type="text" placeholder="Location" onChange={e => setRsoEventLocation(e.target.value)} />
         <input type="text" placeholder="Contact Phone" onChange={e => setRsoEventContactPhone(e.target.value)} />
-        <input/>
+        <select name="event-type" id="event-type" value={eventType} onChange={handleEventTypeChange}>
+          <option value="">--Open to:--</option>
+          <option value="1">University</option>
+          <option value="2">RSO</option>
+        </select>
+        <label>
+          RSO:
+          <select value={rsoId} onChange={handleEventRSOChange} required>
+            <option value="">Select RSO</option>
+            {rsoList.map((rso) => (
+              <option key={rso.rsoId} value={rso.rsoId}>
+                {rso.Name}
+              </option>
+            ))}
+          </select>
+        </label>
         <button onClick={createRsoEvent}>Create</button>
       </Modal>
 

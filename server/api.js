@@ -14,7 +14,7 @@ const mysql = require('mysql2');
 const db = mysql.createPool({
     host: 'localhost',
     user: 'root',
-    password: '1234',
+    password: 'NPalm1@#',
     database: 'university_events'
   });
 
@@ -146,6 +146,8 @@ app.put('/api/rsos/:rsoId', async (req, res) => {
     const { rsoId } = req.params;
     const { userId, name, universityId } = req.body; 
 
+    console.log("rsoId: ", rsoId);
+
     const db = await getDbConnection();
     try {
         
@@ -161,6 +163,26 @@ app.put('/api/rsos/:rsoId', async (req, res) => {
         }
     } catch (error) {
         res.status(500).send({ message: 'Error updating RSO information', error: error.message });
+    }
+});
+
+
+//Admin
+//check if user is the admin of the rso
+app.get('/api/isadmin/:userId/:rsoId', async (req, res) => {
+    const { userId, rsoId } = req.params;
+  
+    const db = await getDbConnection();
+    try {
+      const [isAdmin] = await db.execute('SELECT * FROM UserRSOAffiliation WHERE UserID = ? AND RSOID = ? AND IsAdmin = TRUE', [userId, rsoId]);
+  
+      if (isAdmin.length > 0) {
+        res.send({ isAdmin: true });
+      } else {
+        res.send({ isAdmin: false });
+      }
+    } catch (error) {
+      res.status(500).send({ message: 'Error checking if user is admin', error: error.message });
     }
 });
 
@@ -431,21 +453,22 @@ app.delete('/api/deleteevents/:eventId', async (req, res) => {
 // IsVisibleToUniversity = ? true/false for unniversity 
 //IsVisibleToRSO = ? true/false for rso 
 app.post('/api/events', async (req, res) => {
-    const { name, description, time, date, locationId, contactPhone, contactEmail, eventCategoryId, rsoId, isVisibleToUniversity, isVisibleToRSO, madeBy,universityId } = req.body;
+    const { name, description, time, date, location, contactPhone, contactEmail, eventCategoryID, rsoId, isVisibleToUniversity, isVisibleToRSO, madeBy, universityId } = req.body;
 
     const db = await getDbConnection();
     try {
         // Check if the user is an admin of the RSO if an RSO ID is provided
         if (rsoId) {
-            const [adminCheck] = await db.execute('SELECT * FROM UserRSOAffiliation WHERE UserID = ? AND RSOID = ? AND IsAdmin = TRUE', [madeBy, rsoId]);
+            const [adminCheck] = await db.execute('SELECT * FROM UserRSOAffiliation WHERE UserID = ? AND RSOID = ? AND IsAdmin = 1', [madeBy, rsoId]);
+
+            console.log("adminCheck: ", adminCheck);
             if (adminCheck.length === 0) {
                 return res.status(403).send({ message: 'User is not an admin of the RSO' });
             }
         }
 
-        
-        const query = 'INSERT INTO Event (Name, Description, Time, Date, LocationID, ContactPhone, ContactEmail, EventCategoryID, RSOID,UniversityID, IsVisibleToUniversity, IsVisibleToRSO, IsApproved, MadeBy) VALUES (?, ?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, FALSE, ?)';
-        await db.execute(query, [name, description, time, date, locationId, contactPhone, contactEmail, eventCategoryId, rsoId, universityId,isVisibleToUniversity, isVisibleToRSO, madeBy]);
+        const query = 'INSERT INTO Event (Name, Description, Time, Date, Location, ContactPhone, ContactEmail, EventCategoryID, RSOID, UniversityID, IsVisibleToUniversity, IsVisibleToRSO, IsApproved, MadeBy) VALUES (?, ?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, FALSE, ?)';
+        await db.execute(query, [name, description, time, date, location, contactPhone, contactEmail, eventCategoryID, rsoId, universityId,  isVisibleToUniversity, isVisibleToRSO, madeBy,]);
         res.status(201).send({ message: 'Event created successfully' });
     } catch (error) {
         res.status(500).send({ message: 'Error creating event', error: error.message });
@@ -487,19 +510,20 @@ app.get('/api/events/private/rso', async (req, res) => {
     try {
         
         const [userRso] = await db.execute('SELECT RSOID FROM UserRSOAffiliation WHERE UserID = ?', [userId]);
-
-        
         const rsoIds = userRso.map(rso => rso.RSOID);
 
         
         if (rsoIds.length > 0) {
+            console.log("rsoIds: ", rsoIds);
             const query = 'SELECT * FROM Event WHERE RSOID IN (?) AND IsVisibleToRSO = TRUE';
-            const [events] = await db.execute(query, [rsoIds]);
+            const [events] = await db.execute(query, (rsoIds));
+            console.log("events: ", events);
             res.status(200).json(events);
         } else {
             res.status(200).json([]); 
         }
     } catch (error) {
+        console.log(error);
         res.status(500).send({ message: 'Error retrieving private RSO events', error: error.message });
     } 
 });
