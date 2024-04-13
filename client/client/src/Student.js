@@ -69,7 +69,6 @@ const StudentPage = () => {
       axios.get('http://localhost:5010/api/listrsos', { params: { universityId } })
         .then((response) => setRsoList(response.data))
         .catch((error) => console.error('Error fetching RSOs:', error));
-        console.log('RSO List:', rsoList);
 
       // Fetch RSO events for the student
       axios.get(`http://localhost:5010/api/events/private/rso?userId=${user.userId}`)
@@ -78,9 +77,6 @@ const StudentPage = () => {
       
         checkUserType(user);
     }
-    console.log('Public Events:', publicEvents);
-    console.log('Private Events:', privateEvents);
-
   }, [user]);
 
 
@@ -91,7 +87,6 @@ const StudentPage = () => {
   }
 
   const checkIfUserIsAdmin = async (userId, rsoId) => {
-    console.log('Checking if user is admin:', userId, rsoId);
     try {
       const response = await fetch(`http://localhost:5010/api/isadmin/${userId}/${rsoId}`);
   
@@ -100,8 +95,6 @@ const StudentPage = () => {
       }
   
       const data = await response.json();
-  
-      console.log('Data:', data);
       if (data.isAdmin) {
         return true;
       } else {
@@ -126,7 +119,6 @@ const StudentPage = () => {
   };
 
   const handleEventRSOChange = (event) => {
-    console.log('Selected RSO:', event.target.value);
     const id = event.target.value;
     const selectedRSO = rsoList.find(rso => rso.Name === id);
     if (selectedRSO) {
@@ -260,7 +252,6 @@ const StudentPage = () => {
       return;
     }
 
-    console.log('event: ', eventID)
     try {
       const response = await fetch('http://localhost:5010/api/events', {
         method: 'POST',

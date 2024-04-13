@@ -518,7 +518,6 @@ app.get('/api/events/private/rso', async (req, res) => {
             res.status(200).json([]); 
         }
     } catch (error) {
-        console.log(error);
         res.status(500).send({ message: 'Error retrieving private RSO events', error: error.message });
     } 
 });
@@ -634,15 +633,12 @@ app.post('/api/events/:eventId/comments-ratings', async (req, res) => {
 app.put('/api/events/:eventId/comments-ratings/:commentId', async (req, res) => {
     const { commentId } = req.params;
     const { commentText, rating } = req.body; 
-
-    console.log(commentId, commentText, rating);
     const db = await getDbConnection();
     try {
         
         await db.execute('UPDATE Comment SET CommentText = ?, Rating = ? WHERE CommentID = ?', [commentText || null, rating, commentId]);
         res.send({ message: 'Comment and/or rating updated successfully' });
     } catch (error) {
-        console.log(error);
         res.status(500).send({ message: 'Error updating comment and/or rating', error: error.message });
     } 
 });

@@ -27,8 +27,6 @@ const EventsTable = ({ events, title}) => {
   };
 
   const handleEdit = (commentId, commentText, commentRating) => {
-
-    console.log("Handle edit",commentId, commentText, commentRating);
     setEditingCommentId(commentId);
     setEditedCommentText(commentText);
     setEditedCommentRating(commentRating);
@@ -106,8 +104,6 @@ const EventsTable = ({ events, title}) => {
   };
 
   const handleSave = async (selectedEvent) => {
-
-    console.log("Handle save",editedCommentText, editedCommentRating);
     try {
       const response = await fetch(`http://localhost:5010/api/events/${selectedEvent.EventID}/comments-ratings/${editingCommentId}`, {
         method: 'PUT',
@@ -148,7 +144,6 @@ const EventsTable = ({ events, title}) => {
           </tr>
         </thead>
         <tbody>
-        {console.log(events)}
           {events.length > 0 ? (
             events.map((event, index) => (
               <tr key={index} onClick={() => openModal(event)}>
