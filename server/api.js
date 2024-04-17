@@ -14,7 +14,7 @@ const mysql = require('mysql2');
 const db = mysql.createPool({
     host: 'localhost',
     user: 'root',
-    password: '1234',
+    password: 'NPalm1@#',
     database: 'university_events'
   });
 
@@ -509,10 +509,12 @@ app.get('/api/events/private/rso', async (req, res) => {
         const [userRso] = await db.execute('SELECT RSOID FROM UserRSOAffiliation WHERE UserID = ?', [userId]);
         const rsoIds = userRso.map(rso => rso.RSOID);
 
+        console.log(rsoIds);
         
         if (rsoIds.length > 0) {
-            const query = 'SELECT * FROM Event WHERE RSOID IN (?) AND IsVisibleToRSO = TRUE';
-            const [events] = await db.execute(query, (rsoIds));
+            const placeholders = rsoIds.map(() => '?').join(',');
+            const query = `SELECT * FROM Event WHERE RSOID IN (${placeholders}) AND IsVisibleToRSO = TRUE`;
+            const [events] = await db.execute(query, rsoIds);
             res.status(200).json(events);
         } else {
             res.status(200).json([]); 

@@ -44,7 +44,7 @@ const EventsTable = ({ events, title}) => {
   
       // Remove the deleted comment from the state
       setComments(comments.filter(comment => comment.id !== commentId));
-      fetchComments(eventId);
+      fetchComments(selectedEvent);
     } catch (error) {
       alert(error.message);
     }
@@ -94,7 +94,7 @@ const EventsTable = ({ events, title}) => {
         setComment('');
         setRating('');
         // Fetch the comments again after adding a comment
-        fetchComments();
+        fetchComments(selectedEvent);
       } else {
         alert(data.message);
       }

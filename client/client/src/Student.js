@@ -17,6 +17,8 @@ const StudentPage = () => {
   const [universities, setUniversities] = useState([]);
   const [rsos, setRsosId] = useState([]);
   const [rsoId, setRsoId] = useState('');
+  const [rsoLeaveId, setRsoLeaveId] = useState('');
+  const [rsoJoinId, setRsoJoinId] = useState('');
   const [selectedEmailDomain, setSelectedEmailDomain] = useState('');
   const [joinModalIsOpen, setJoinModalIsOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -74,6 +76,8 @@ const StudentPage = () => {
       axios.get(`http://localhost:5010/api/events/private/rso?userId=${user.userId}`)
         .then((response) => setRsoEvents(response.data))
         .catch((error) => console.error('Error fetching RSO events:', error));
+
+      console.log("Rso",rsoEvents)
       
         checkUserType(user);
     }
@@ -108,6 +112,16 @@ const StudentPage = () => {
 
   const handleRSOChange = (e) => {
     const id = e.target.value;
+    setRsoJoinId(e.target.value);
+    const selectedRSO = rsoList.find(rso => rso.Name === id);
+    if (selectedRSO) {
+      setSelectedRSO(selectedRSO);
+    }
+  };
+
+  const handleLeaveRSOChange = (e) => {
+    const id = e.target.value;
+    setRsoLeaveId(e.target.value);
     const selectedRSO = rsoList.find(rso => rso.Name === id);
     if (selectedRSO) {
       setSelectedRSO(selectedRSO);
@@ -120,6 +134,7 @@ const StudentPage = () => {
 
   const handleEventRSOChange = (event) => {
     const id = event.target.value;
+    setRsoId(event.target.value);
     const selectedRSO = rsoList.find(rso => rso.Name === id);
     if (selectedRSO) {
       setSelectedRSO(selectedRSO);
@@ -280,6 +295,7 @@ const StudentPage = () => {
       }
   
       const data = await response.json();
+      setCreateRsoEventModalIsOpen(false)
       axios.get(`http://localhost:5010/api/events/private/uni?universityId=${user.universityId}`)
         .then((response) => setPrivateEvents(response.data))
         .catch((error) => console.error('Error fetching private events:', error));
@@ -347,7 +363,7 @@ const StudentPage = () => {
         <h2>Join/Leave RSO</h2>
         <label>
           RSO:
-          <select value={rsoId} onChange={handleRSOChange} required>
+          <select value={rsoJoinId} onChange={handleRSOChange} required>
             <option value="">Select RSO</option>
             {rsoList.map((rso) => (
               <option key={rso.rsoId} value={rso.rsoId}>
@@ -360,7 +376,7 @@ const StudentPage = () => {
 
         <label>
           RSO:
-          <select value={rsoId} onChange={handleRSOChange} required>
+          <select value={rsoLeaveId} onChange={handleLeaveRSOChange} required>
             <option value="">Select RSO</option>
             {rsoList.map((rso) => (
               <option key={rso.rsoId} value={rso.rsoId}>
